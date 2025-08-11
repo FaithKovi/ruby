@@ -1,14 +1,16 @@
 # syntax=docker/dockerfile:1
-FROM ruby:3.3-slim
+FROM ruby:3.3-alpine
 
-# Install dependencies
-RUN apt-get update -qq && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
+# Install build and runtime dependencies
+RUN apk add --no-cache \
+    build-base \
+    linux-headers \
     libpq-dev \
+    postgresql-dev \
     nodejs \
-    yarn && \
-    rm -rf /var/lib/apt/lists/*
+    yarn \
+    tzdata \
+    git
 
 # Set working directory
 WORKDIR /app
@@ -16,20 +18,21 @@ WORKDIR /app
 # Install bundler
 RUN gem install bundler --no-document
 
-# Copy Gemfiles first for caching
+# Copy Gemfiles first for layer caching
 COPY Gemfile Gemfile.lock ./
 
-# Install gems
-RUN bundle install --jobs 4 --retry 3
+# Install gems (production mode)
+RUN bundle config set without 'development test' && \
+    bundle install --jobs 4 --retry 3
 
-# Copy the rest of the app
+# Copy application files
 COPY . .
 
 # Precompile assets if it's a Rails app
 RUN if [ -f "bin/rails" ]; then bundle exec rails assets:precompile; fi
 
-# Expose app port
+# Expose Rails default port
 EXPOSE 3000
 
-# Start server
+# Start the app server (Puma)
 CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
