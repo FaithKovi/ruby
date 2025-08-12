@@ -25,6 +25,11 @@ Rails.application.configure do
     config.action_controller.perform_caching = false
   end
 
+  if Rails.env.development?
+    require "debug/prelude"
+  end
+
+
   # Change to :null_store to avoid any caching.
   config.cache_store = :memory_store
 
